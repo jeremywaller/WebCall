@@ -17,13 +17,27 @@ namespace WebCall
         public TResponse Invoke<TRequest, TResponse>(TRequest request, Uri endpointUri, Method method = Method.POST, string contentType = "application/x-www-form-urlencoded", Dictionary<WebCallHeaderType, string> customHeaders = null)
             where TResponse : new()
         {
+            // Use TLS 1.2
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
             var client = new RestClient(endpointUri);
+
+            // Override with Newtonsoft JSON Handler
+            client.AddHandler("application/json", NewtonsoftJsonSerializer.Default);
+            client.AddHandler("text/json", NewtonsoftJsonSerializer.Default);
+            client.AddHandler("text/x-json", NewtonsoftJsonSerializer.Default);
+            client.AddHandler("text/javascript", NewtonsoftJsonSerializer.Default);
+            client.AddHandler("*+json", NewtonsoftJsonSerializer.Default);
+
             var restRequest = new RestRequest(method);
+            restRequest.RequestFormat = DataFormat.Json;
+            restRequest.JsonSerializer = NewtonsoftJsonSerializer.Default;
+
             restRequest.AddHeader("content-type", contentType);
 
             customHeaders?.ToList().ForEach(h =>
             {
-                var headerName = Enum.GetName(typeof (WebCallHeaderType), h.Key);
+                var headerName = Enum.GetName(typeof(WebCallHeaderType), h.Key);
                 var headerValue = h.Value;
 
                 if (h.Key == WebCallHeaderType.Authorization)
@@ -33,17 +47,28 @@ namespace WebCall
 
                 restRequest.AddHeader(headerName, headerValue);
             });
-            
+
             if (request != null)
             {
-                restRequest.AddObject(request);
+                if (contentType == "application/json" ||
+                    contentType == "text/json" ||
+                    contentType == "text/x-json" ||
+                    contentType == "text/javascript" ||
+                    contentType == "*+json")
+                {
+                    restRequest.AddBody(request);
+                }
+                else
+                {
+                    restRequest.AddObject(request);
+                }
             }
 
             IRestResponse<TResponse> response = client.Execute<TResponse>(restRequest);
 
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
-                throw new ApplicationException(response.StatusDescription);
+                throw new ApplicationException(response.Content);
             }
 
             if (response.ErrorException != null)
