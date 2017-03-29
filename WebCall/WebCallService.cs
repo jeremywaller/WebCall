@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using RestSharp;
+using WebCall.Interfaces;
 
 namespace WebCall
 {
@@ -29,9 +30,11 @@ namespace WebCall
             client.AddHandler("text/javascript", NewtonsoftJsonSerializer.Default);
             client.AddHandler("*+json", NewtonsoftJsonSerializer.Default);
 
-            var restRequest = new RestRequest(method);
-            restRequest.RequestFormat = DataFormat.Json;
-            restRequest.JsonSerializer = NewtonsoftJsonSerializer.Default;
+            var restRequest = new RestRequest(method)
+            {
+                RequestFormat = DataFormat.Json,
+                JsonSerializer = NewtonsoftJsonSerializer.Default
+            };
 
             restRequest.AddHeader("content-type", contentType);
 
